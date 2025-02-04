@@ -55,7 +55,7 @@ anotherRoot["dummy"].get<int>()         // 2
 ```
 
 ### Creating / Changing / Dumping Values
-Everytihng discussed in this section is disabled if `JSON_DISABLE_DUMPING` is defined.
+Dumping is disabled if `JSON_DISABLE_DUMPING` is defined.
 ```c
 JSON root;
 root["something"] = "another thing";
