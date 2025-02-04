@@ -65,11 +65,11 @@ root["anotherObject]["smt"] = "value";
 // or we can create it like
 
 JSON root = {
-    "something": "another thing",
-    "exampleArray": {1, 2, 3},
-    "anotherObject": {
-        "smt": "value"
-    }
+    {"something", "another thing"},
+    {"exampleArray", {1, 2, 3}},
+    {"anotherObject", {
+        "smt", "value"
+    }}
 }
 
 // Dumping json
