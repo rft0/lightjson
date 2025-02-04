@@ -4,7 +4,6 @@
 // Define JSON_DISABLE_DUMPING to not generate JSON::dump() and related methods if you don't need it. 
 // This will help to reduce size of the compiled binary.
 
-
 #ifndef __JSON_HPP__
 #define __JSON_HPP__
 
@@ -17,11 +16,12 @@
 #include <sstream>
 #include <cctype>
 #include <iomanip>
+#include <type_traits>
 
 // #define JSON_DISABLE_DUMPING
 
 template<typename T, typename Enable = void>
-struct JSONGetter;
+struct JSONTypeTraits;
 
 class JSON {
 public:
@@ -35,6 +35,14 @@ public:
         Object
     };
 
+    static JSON o(std::initializer_list<std::pair<std::string, JSON>> list) {
+        std::map<std::string, JSON> obj;
+        for (const auto& pair : list) {
+            obj[pair.first] = pair.second;
+        }
+        return JSON(obj);
+    }
+
     JSON() : type(Null) {}
     JSON(bool b) : type(Boolean), boolean(b) {}
     JSON(int i) : type(Integer), integer(i) {}
@@ -42,7 +50,8 @@ public:
     JSON(const char* s) : type(String), string(new std::string(s)) {}
     JSON(const std::string& s) : type(String), string(new std::string(s)) {}
     JSON(const std::vector<JSON>& a) : type(Array), array(new std::vector<JSON>(a)) {}
-    JSON(const std::map<std::string, JSON>& o) : type(Object), object(new std::map<std::string, JSON>(o)) {}
+    JSON(std::initializer_list<JSON> list) : type(Array), array(new std::vector<JSON>(list)) {}
+    JSON(const std::map<std::string, JSON>& obj) : type(Object), object(new std::map<std::string, JSON>(obj)) {}
 
     ~JSON() {
         clear();
@@ -55,13 +64,16 @@ public:
     Type getType() const { return type; }
 
     template<typename T>
-    T get() const;
+    T get() const {
+        return JSONTypeTraits<T>::get(*this);
+    }
 
 #ifndef JSON_DISABLE_DUMPING
     friend std::ostream& operator<<(std::ostream &os, const JSON &json) {
         os << json.dump();
         return os;
     }
+#endif
 
     JSON& operator=(const JSON& other) {
         if (this != &other) {
@@ -114,10 +126,10 @@ public:
         return *this;
     }
 
-    JSON& operator=(const std::map<std::string, JSON>& o) {
+    JSON& operator=(const std::map<std::string, JSON>& obj) {
         clear();
         type = Object;
-        object = new std::map<std::string, JSON>(o);
+        object = new std::map<std::string, JSON>(obj);
         return *this;
     }
 
@@ -127,13 +139,17 @@ public:
         array = new std::vector<JSON>(list);
         return *this;
     }
-#endif
 
     JSON& operator[](const std::string& key) {
         if (type != Object) {
-            std::ostringstream oss;
-            oss << "Field \"" << key << "\" is not an object.";
-            throw std::runtime_error(oss.str());
+            if (type == Null) {
+                type = Object;
+                object = new std::map<std::string, JSON>();
+            } else {
+                std::ostringstream oss;
+                oss << "Field \"" << key << "\" is not an object.";
+                throw std::runtime_error(oss.str());
+            }
         }
         
         return (*object)[key];
@@ -175,7 +191,7 @@ public:
 
 private:
     template<typename T, typename Enable>
-    friend struct JSONGetter;
+    friend struct JSONTypeTraits;
 
     Type type;
     union {
@@ -303,80 +319,83 @@ private:
         oss << '}';
     }
 #endif
-
 };
 
+template<>
+struct JSONTypeTraits<bool> {
+  static bool get(const JSON& json) {
+    if (json.getType() != JSON::Boolean)
+      throw std::runtime_error("Not a boolean");
+    return json.boolean;
+  }
+};
+
+// Integer 
+template<>
+struct JSONTypeTraits<int> {
+  static int get(const JSON& json) {
+    if (json.getType() != JSON::Integer)
+      throw std::runtime_error("Not an integer");
+    return json.integer;
+  }
+};
+
+// Double
+template<>
+struct JSONTypeTraits<double> {
+  static double get(const JSON& json) {
+    if (json.getType() != JSON::Double)
+      throw std::runtime_error("Not a double");
+    return json.doubleVal;
+  }
+};
+
+// String
+template<>
+struct JSONTypeTraits<std::string> {
+  static std::string get(const JSON& json) {
+    if (json.getType() != JSON::String)
+      throw std::runtime_error("Not a string");
+    return *json.string;
+  }
+};
+
+// Arrays (homogeneous)
 template<typename T>
-T JSON::get() const {
-    return JSONGetter<T>::get(*this);
-}
-
-template<>
-struct JSONGetter<bool> {
-    static bool get(const JSON& v) {
-        if (v.type != JSON::Boolean)
-            throw std::runtime_error("Not a boolean");
-        return v.boolean;
+struct JSONTypeTraits<std::vector<T>> {
+  static std::vector<T> get(const JSON& json) {
+    if (json.getType() != JSON::Array)
+      throw std::runtime_error("Not an array");
+      
+    std::vector<T> result;
+    const auto& arr = *json.array;
+    for (const auto& item : arr) {
+      result.push_back(item.get<T>());
     }
+    return result;
+  }
 };
 
+// Object (map)
 template<>
-struct JSONGetter<int> {
-    static int get(const JSON& v) {
-        if (v.type != JSON::Integer)
-            throw std::runtime_error("Not an integer");
-        return v.integer;
-    }
+struct JSONTypeTraits<std::map<std::string, JSON>> {
+  static std::map<std::string, JSON> get(const JSON& json) {
+    if (json.getType() != JSON::Object)
+      throw std::runtime_error("Not an object");
+    return *json.object;
+  }
 };
 
-template<>
-struct JSONGetter<double> {
-    static double get(const JSON& v) {
-        if (v.type != JSON::Double)
-            throw std::runtime_error("Not a double");
-        return v.doubleVal;
-    }
-};
-
-template<>
-struct JSONGetter<std::string> {
-    static std::string get(const JSON& v) {
-        if (v.type != JSON::String)
-            throw std::runtime_error("Not a string");
-        return *v.string;
-    }
-};
-
-template<>
-struct JSONGetter<std::vector<JSON>> {
-    static std::vector<JSON> get(const JSON& v) {
-        if (v.type != JSON::Array)
-            throw std::runtime_error("Not an array");
-        return *v.array;
-    }
-};
-
-template<>
-struct JSONGetter<std::map<std::string, JSON>> {
-    static std::map<std::string, JSON> get(const JSON& v) {
-        if (v.type != JSON::Object)
-            throw std::runtime_error("Not an object");
-        return *v.object;
-    }
-};
-
+// SFINAE for arithmetic types
 template<typename T>
-struct JSONGetter<std::vector<T>> {
-    static std::vector<T> get(const JSON& v) {
-        if (v.type != JSON::Array)
-            throw std::runtime_error("Not an array");
-        std::vector<T> result;
-        const auto& array = v.get<std::vector<JSON>>();
-        for (const auto& item : array) {
-            result.push_back(JSONGetter<T>::get(item));
-        }
-        return result;
+struct JSONTypeTraits<T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
+  static T get(const JSON& json) {
+    switch (json.getType()) {
+      case JSON::Integer: return static_cast<T>(json.integer);
+      case JSON::Double: return static_cast<T>(json.doubleVal);
+      default: throw std::runtime_error("Not a numeric type");
     }
+  }
 };
 
 class JSONParser {
