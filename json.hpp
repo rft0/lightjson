@@ -324,47 +324,43 @@ private:
 template<>
 struct JSONTypeTraits<bool> {
   static bool get(const JSON& json) {
-    if (json.getType() != JSON::Boolean)
+    if (json.type != JSON::Boolean)
       throw std::runtime_error("Not a boolean");
     return json.boolean;
   }
 };
 
-// Integer 
 template<>
 struct JSONTypeTraits<int> {
   static int get(const JSON& json) {
-    if (json.getType() != JSON::Integer)
+    if (json.type != JSON::Integer)
       throw std::runtime_error("Not an integer");
     return json.integer;
   }
 };
 
-// Double
 template<>
 struct JSONTypeTraits<double> {
   static double get(const JSON& json) {
-    if (json.getType() != JSON::Double)
+    if (json.type != JSON::Double)
       throw std::runtime_error("Not a double");
     return json.doubleVal;
   }
 };
 
-// String
 template<>
 struct JSONTypeTraits<std::string> {
   static std::string get(const JSON& json) {
-    if (json.getType() != JSON::String)
+    if (json.type != JSON::String)
       throw std::runtime_error("Not a string");
     return *json.string;
   }
 };
 
-// Arrays (homogeneous)
 template<typename T>
 struct JSONTypeTraits<std::vector<T>> {
   static std::vector<T> get(const JSON& json) {
-    if (json.getType() != JSON::Array)
+    if (json.type != JSON::Array)
       throw std::runtime_error("Not an array");
       
     std::vector<T> result;
@@ -376,21 +372,19 @@ struct JSONTypeTraits<std::vector<T>> {
   }
 };
 
-// Object (map)
 template<>
 struct JSONTypeTraits<std::map<std::string, JSON>> {
   static std::map<std::string, JSON> get(const JSON& json) {
-    if (json.getType() != JSON::Object)
+    if (json.type != JSON::Object)
       throw std::runtime_error("Not an object");
     return *json.object;
   }
 };
 
-// SFINAE for arithmetic types
 template<typename T>
 struct JSONTypeTraits<T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
   static T get(const JSON& json) {
-    switch (json.getType()) {
+    switch (json.type) {
       case JSON::Integer: return static_cast<T>(json.integer);
       case JSON::Double: return static_cast<T>(json.doubleVal);
       default: throw std::runtime_error("Not a numeric type");
