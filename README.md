@@ -69,11 +69,11 @@ printf("%s", root.dump(4)); // (first argument means indentation space count, de
 std::cout << root << std::endl;
 
 // another way to create json from root with initializer lists
-JSON root = {
+JSON root = JSON::o({
     {"something", "another thing"},
     {"exampleArray", {1, 2, 3}},
     {"anotherObject", { "smt", "value" }}
-};
+});
 ```
 
 
