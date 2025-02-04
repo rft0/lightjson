@@ -56,27 +56,24 @@ anotherRoot["dummy"].get<int>()         // 2
 
 ### Creating / Changing / Dumping Values
 Everytihng discussed in this section is disabled if `JSON_DISABLE_DUMPING` is defined.
-```cpp
+```c
 JSON root;
 root["something"] = "another thing";
 root["exampleArray"] = {1, 2, 3};
 root["anotherObject]["smt"] = "value"; 
-
-// or we can create it like
-
-JSON root = {
-    {"something", "another thing"},
-    {"exampleArray", {1, 2, 3}},
-    {"anotherObject", {
-        "smt", "value"
-    }}
-}
 
 // Dumping json
 printf("%s", root.dump(4)); // (first argument means indentation space count, default: 4)
 
 // or we can dump json root directly with using overloaded << operator.
 std::cout << root << std::endl;
+
+// another way to create json from root with initializer lists
+JSON root = {
+    {"something", "another thing"},
+    {"exampleArray", {1, 2, 3}},
+    {"anotherObject", { "smt", "value" }}
+};
 ```
 
 
