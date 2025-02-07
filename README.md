@@ -29,8 +29,8 @@ Reading simple fields.
 const char* data = R"("name": "John", "lastName": "Doe", "age": 30, "something": [1, 2.5, {"dummy": "dummyvalue"}])";
 JSON json = JSONParser::parse(data)
 
-std::string name = json["name"].get<std::string>();       // John
-int age = json["age"].get<int>();                         // 30
+std::string name = json["name"].as<std::string>();       // John
+int age = json["age"].as<int>();                         // 30
 int someFloat = json["something"][1]                      // 2.5
 std::string dummy = json["something"][2]["dummy"]         // dummyvalue
 ```
@@ -41,17 +41,17 @@ const char* data = R"("intArray": [1, 2, 3, 4, 5], "complexArray": ["something",
 JSON json = JSONParser::parse(data);
 
 // Reading an array when all members are same type
-std::vector<int> intArray = json["intArray"].get<std::vector<int>>(); // [1, 2, 3, 4, 5]
+std::vector<int> intArray = json["intArray"].as<std::vector<int>>(); // [1, 2, 3, 4, 5]
 
 // Reading an array when it contains members with different types.
-std::vector<JSON> complexArray = json["complexArray"].get<std::vector<JSON>>();
-complexArray[0].get<std::string>();     // something
-complexArray[1].get<int>();             // 1
-complexArray[2]["dummy"].get<int>();    // 2
+std::vector<JSON> complexArray = json["complexArray"].as<std::vector<JSON>>();
+complexArray[0].as<std::string>();     // something
+complexArray[1].as<int>();             // 1
+complexArray[2]["dummy"].as<int>();    // 2
 
 // or we can read value of field "dummy" like this.
 JSON anotherRoot = complexArray[2];
-anotherRoot["dummy"].get<int>()         // 2
+anotherRoot["dummy"].as<int>()         // 2
 ```
 
 ### Creating / Changing / Dumping Values
