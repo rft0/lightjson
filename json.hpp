@@ -1,5 +1,5 @@
 // LightJSON - Simple, Light Weight, Header Only, C++11 compliant JSON Library.
-// Github: https://github.com/rft0/lightjson 
+// Github: https://github.com/rft0/lightjson
 // For those who do not want to include json library heavier than small codebase itself.
 // Define JSON_DISABLE_DUMPING to not generate JSON::dump() and related methods if you don't need it. 
 // This will help to reduce size of the compiled binary.
@@ -61,11 +61,9 @@ public:
         copy(other);
     }
 
-    Type getType() const { return type; }
-
     template<typename T>
-    T get() const {
-        return JSONTypeTraits<T>::get(*this);
+    T as() const {
+        return JSONTypeTraits<T>::as(*this);
     }
 
 #ifndef JSON_DISABLE_DUMPING
@@ -181,6 +179,30 @@ public:
         return (*array)[index];
     }
 
+    std::vector<JSON>::iterator begin() {
+        if (type != Array)
+            throw std::runtime_error("Value is not an array.");
+        return array->begin();
+    }
+
+    std::vector<JSON>::iterator end() {
+        if (type != Array)
+            throw std::runtime_error("Value is not an array.");
+        return array->end();
+    }
+
+    std::vector<JSON>::const_iterator begin() const {
+        if (type != Array)
+            throw std::runtime_error("JSON is not an array.");
+        return array->begin();
+    }
+    
+    std::vector<JSON>::const_iterator end() const {
+        if (type != Array)
+            throw std::runtime_error("JSON is not an array.");
+        return array->end();
+    }
+
 #ifndef JSON_DISABLE_DUMPING
     std::string dump(int indent = 4) const {
         std::ostringstream oss;
@@ -228,7 +250,7 @@ private:
 
 #ifndef JSON_DISABLE_DUMPING
     void dumpValue(const JSON& value, std::ostringstream& oss, int level, int indent) const {
-        switch (value.getType()) {
+        switch (value.type) {
             case Null: oss << "null"; break;
             case Boolean: oss << (value.boolean ? "true" : "false"); break;
             case Integer: oss << value.integer; break;
@@ -265,7 +287,7 @@ private:
     void dumpArray(const std::vector<JSON>& arr, std::ostringstream& oss, int level, int indent) const {
         bool hasComplexChildren = false;
         for (const auto& item : arr) {
-            if (item.getType() == JSON::Object || item.getType() == JSON::Array) {
+            if (item.type == JSON::Object || item.type == JSON::Array) {
                 hasComplexChildren = true;
                 break;
             }
@@ -323,7 +345,7 @@ private:
 
 template<>
 struct JSONTypeTraits<bool> {
-  static bool get(const JSON& json) {
+  static bool as(const JSON& json) {
     if (json.type != JSON::Boolean)
       throw std::runtime_error("Not a boolean");
     return json.boolean;
@@ -332,7 +354,7 @@ struct JSONTypeTraits<bool> {
 
 template<>
 struct JSONTypeTraits<int> {
-  static int get(const JSON& json) {
+  static int as(const JSON& json) {
     if (json.type != JSON::Integer)
       throw std::runtime_error("Not an integer");
     return json.integer;
@@ -341,7 +363,7 @@ struct JSONTypeTraits<int> {
 
 template<>
 struct JSONTypeTraits<double> {
-  static double get(const JSON& json) {
+  static double as(const JSON& json) {
     if (json.type != JSON::Double)
       throw std::runtime_error("Not a double");
     return json.doubleVal;
@@ -350,7 +372,7 @@ struct JSONTypeTraits<double> {
 
 template<>
 struct JSONTypeTraits<std::string> {
-  static std::string get(const JSON& json) {
+  static std::string as(const JSON& json) {
     if (json.type != JSON::String)
       throw std::runtime_error("Not a string");
     return *json.string;
@@ -359,22 +381,23 @@ struct JSONTypeTraits<std::string> {
 
 template<typename T>
 struct JSONTypeTraits<std::vector<T>> {
-  static std::vector<T> get(const JSON& json) {
+  static std::vector<T> as(const JSON& json) {
     if (json.type != JSON::Array)
       throw std::runtime_error("Not an array");
       
     std::vector<T> result;
     const auto& arr = *json.array;
     for (const auto& item : arr) {
-      result.push_back(item.get<T>());
+      result.push_back(item.as<T>());
     }
+
     return result;
   }
 };
 
 template<>
 struct JSONTypeTraits<std::map<std::string, JSON>> {
-  static std::map<std::string, JSON> get(const JSON& json) {
+  static std::map<std::string, JSON> as(const JSON& json) {
     if (json.type != JSON::Object)
       throw std::runtime_error("Not an object");
     return *json.object;
@@ -383,7 +406,7 @@ struct JSONTypeTraits<std::map<std::string, JSON>> {
 
 template<typename T>
 struct JSONTypeTraits<T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
-  static T get(const JSON& json) {
+  static T as(const JSON& json) {
     switch (json.type) {
       case JSON::Integer: return static_cast<T>(json.integer);
       case JSON::Double: return static_cast<T>(json.doubleVal);
@@ -400,11 +423,17 @@ public:
 
     static JSON parse(const std::string& data) {
         JSONParser parser(data);
+        if (parser.data.empty())
+            throw std::runtime_error("Empty JSON file");
+
         return parser.parse();
     }
 
     static JSON parse(std::ifstream& f) {
         JSONParser parser(f);
+        if (parser.data.empty())
+            throw std::runtime_error("Empty JSON file");
+
         return parser.parse();
     }
 
@@ -469,7 +498,7 @@ private:
         std::map<std::string, JSON> obj;
         skipWhitespace();
         while (data[pos] != '}') {
-            std::string key = parseString().get<std::string>();
+            std::string key = parseString().as<std::string>();
             skipWhitespace();
             if (data[pos] != ':') {
                 throwError("Expected ':' in JSON object");
